@@ -1,8 +1,26 @@
 # X2CT-GAN: Reconstructing CT from Biplanar X-Rays with Generative Adversarial Networks
 
+## What's different?
+- [x] Using framework monai to load and save 3D CT model in '*.nii' format. 
+- [x] Add Saving 3D image interface in test process to visualize the result. 
+- [x] Add Makefile to fasilitate the process of training and testing.
+- [ ] Plan to fit Pytorch-Lightning framework
+
+### Requirements
+1. monai framework(Medical Open Network for Artificial Intelligence)
+2. skimage
+
+### Installation
+1. pip install 'monai[all]'
+2. pip install -U scikit-image
+
+### Demo
+See the example of train and test in Makefile
+
+
 ## Introduction
 -----
-This is the official code release of the 2019 CVPR paper <a href="https://arxiv.org/abs/1905.06902">X2CT-GAN: Reconstructing CT from Biplanar X-Rays with Generative Adversarial Networks</a>. In the original paper, we proposed a novel method to reconstruct CT from two orthogonal X-Ray images using the generative adversarial network (GAN). A specially designed generator network is exploited to increase data dimension from 2D (X-Rays) to 3D (CT), which has not been addressed in previous research works. In this code release, we provide the complete source codes, trained models and related LIDC data that are used in our experiments, which may help you validate our method as well as several baselines. You can also use the source code to process the data and retrain all the networks. 
+This project is based on the official code release of the 2019 CVPR paper <a href="https://arxiv.org/abs/1905.06902">X2CT-GAN: Reconstructing CT from Biplanar X-Rays with Generative Adversarial Networks</a>. In the original paper, we proposed a novel method to reconstruct CT from two orthogonal X-Ray images using the generative adversarial network (GAN). A specially designed generator network is exploited to increase data dimension from 2D (X-Rays) to 3D (CT), which has not been addressed in previous research works. In this code release, we provide the complete source codes, trained models and related LIDC data that are used in our experiments, which may help you validate our method as well as several baselines. You can also use the source code to process the data and retrain all the networks. 
 
 <div align=center>
 <img src="./images/workflow.png" width="600"/>
@@ -37,6 +55,7 @@ year = {2019}}
 2. python3.6 was tested
 3. python dependencies, please see the requirements.txt file
 4. CUDA8.0 and cudnn7.0 had been tested
+5. monai framework(Medical Open Network for Artificial Intelligence)
 
 ## Installation
 ----
@@ -44,6 +63,7 @@ year = {2019}}
 - pip install -r requirements.txt
 - Install pytorch 0.41 or above
 - Make sure CUDA and cudnn are installed
+- pip install 'monai[all]'
 - Download preprocessed dataset and our model files: <a href="https://share.weiyun.com/5xRVfvP">weiyun</a> or <a href="https://www.dropbox.com/sh/06r3g02dyeyh5x5/AADFhwRuG_SPuGGwKx-SZLrna?dl=0">dropbox</a>
 - Download the source code and put the data file to the right location according to the code structure below
 
@@ -63,6 +83,7 @@ CTGAN/:
    |--lib/:folder include all the dependency source codes
    |    |--config/: folder includes the config file
    |    |--dataset/: folder includes the source code to process the data
+   |        |--Add monai_nii_dataset.py
    |    |--model/: folder includes the network definitions and loss definitions
    |    |--utils/: utility functions
    |
