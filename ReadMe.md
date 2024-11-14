@@ -1,6 +1,7 @@
 # X2CT-GAN: Reconstructing CT from Biplanar X-Rays with Generative Adversarial Networks
 
 ## What's different?
+> author: Chandery
 - [x] Using framework monai to load and save 3D CT model in '*.nii' format. 
 - [x] Add Saving 3D image interface in test process to visualize the result. 
 - [x] Add Makefile to fasilitate the process of training and testing.
