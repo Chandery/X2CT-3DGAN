@@ -7,6 +7,7 @@
 import argparse
 from lib.config.config import cfg_from_yaml, cfg, merge_dict_and_yaml, print_easy_dict
 from lib.dataset.factory import get_dataset
+from lib.dataset.monai_nii_dataset import prepare_dataset
 from lib.model.factory import get_model
 import copy
 import torch
@@ -24,7 +25,7 @@ def parse_args():
                      help='input data root')
   parse.add_argument('--dataset', type=str, default='', dest='dataset',
                      help='Train or test or valid')
-  parse.add_argument('--valid_dataset', type=str, default=None, dest='valid_dataset',
+  parse.add_argument('--valid_dataset', type=bool, default=False, dest='valid_dataset',
                      help='Train or test or valid')
   parse.add_argument('--datasetfile', type=str, default='', dest='datasetfile',
                      help='Train or test or valid file path')
@@ -49,6 +50,17 @@ def parse_args():
   args = parse.parse_args()
   return args
 
+def print_basic_info(opt, epoch):
+  print("=="*20)
+  print('Epoch: {}'.format(epoch))
+  print('Learning rate: {}'.format(opt.lr))
+  print('Identity Lambda: {} | GAN Lambda: {} | Feature Map Lambda: {} | Map GAN Lambda: {} | Auxiliary Lambda: {}'.format(opt.idt_lambda, 
+                                                                                                                           opt.gan_lambda, 
+                                                                                                                           opt.feature_D_map_lambda, 
+                                                                                                                           opt.map_gan_lambda,
+                                                                                                                           opt.auxiliary_lambda))
+
+
 if __name__ == '__main__':
   args = parse_args()
 
@@ -59,6 +71,7 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
       split_gpu = str(args.gpuid).split(',')
       args.gpu_ids = [int(i) for i in split_gpu]
+      print('Using gpu: {}'.format(args.gpuid))
     else:
       print('There is no gpu!')
       exit(0)
@@ -82,32 +95,52 @@ if __name__ == '__main__':
   opt.data_augmentation = augmentationClass
 
   # valid dataset
-  if args.valid_dataset is not None:
+  if args.valid_dataset is True:
     valid_opt = copy.deepcopy(opt)
     valid_opt.data_augmentation = dataTestClass
     valid_opt.datasetfile = opt.valid_datasetfile
 
 
-    valid_dataset = datasetClass(valid_opt)
-    print('Valid DataSet is {}'.format(valid_dataset.name))
+    # valid_dataset = datasetClass(valid_opt)
+    # valid_dataset = prepare_dataset(opt.data_path, opt.resize_size, opt.img_resize_size, opt.cond_path, split='val')
+    valid_dataset, _shuffle = prepare_dataset(data_path=opt.data_path, 
+                            resize_size=opt.cond_resize_size, 
+                            img_resize_size=opt.img_resize_size, 
+                            cond_path=opt.cond_path, 
+                            split='val'
+    )
+
+
+    # print('Valid DataSet is {}'.format(valid_dataset.name))
     valid_dataloader = torch.utils.data.DataLoader(
       valid_dataset,
       batch_size=1,
-      shuffle=False,
+      shuffle=_shuffle,
       num_workers=int(valid_opt.nThreads),
       collate_fn=collateClass)
     valid_dataset_size = len(valid_dataloader)
     print('#validation images = %d' % valid_dataset_size)
   else:
     valid_dataloader = None
+  
 
   # get dataset
-  dataset = datasetClass(opt)
-  print('DataSet is {}'.format(dataset.name))
+  # dataset = datasetClass(opt)
+  print(type(opt.resize_size))
+  print(opt.resize_size)  
+  dataset, _shuffle = prepare_dataset(data_path=opt.data_path, 
+                            resize_size=opt.cond_resize_size, 
+                            img_resize_size=opt.img_resize_size, 
+                            cond_path=opt.cond_path, 
+                            split='train'
+  )
+  
+  print("dataset has been loaded")
+  # print('DataSet is {}'.format(dataset.name))
   dataloader = torch.utils.data.DataLoader(
     dataset,
     batch_size=opt.batch_size,
-    shuffle=True,
+    shuffle=_shuffle,
     num_workers=int(opt.nThreads),
     collate_fn=collateClass)
 
@@ -132,8 +165,23 @@ if __name__ == '__main__':
   # train discriminator more
   dataloader_iter_for_discriminator = iter(dataloader)
 
+  # * check idt lambda
+  epoch_max = opt.niter + opt.niter_decay
+  idt_lambda_tmp = opt.idt_lambda
+
+  if opt.idt_delay:
+    opt.idt_lambda = 0.01
+    opt.idt_delay_epoch = epoch_max // 5
+
   # train
-  for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
+  for epoch in range(opt.epoch_count, epoch_max + 1):
+    # * check idt lambda
+    if opt.idt_delay and epoch == opt.idt_delay_epoch:
+      opt.idt_lambda = idt_lambda_tmp
+      print('Switch idt_lambda to {}'.format(opt.idt_lambda))
+    # * print lambda info
+    print_basic_info(opt, epoch)
+
     epoch_start_time = time.time()
     iter_data_time = time.time()
 

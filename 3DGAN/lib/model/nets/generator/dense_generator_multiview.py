@@ -22,7 +22,7 @@ def UNetLike_DownStep5(input_shape, encoder_input_channels, decoder_output_chann
   decoder_begin_size = input_shape // pow(2, len(encoder_block_list))
   return UNetLike_DenseDimensionNet(encoder_input_channels, decoder_output_channels, decoder_begin_size, encoder_block_list, decoder_block_list, growth_rate, encoder_channel_list, decoder_channel_list, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out)
 
-def UNetLike_DownStep5_3(input_shape, encoder_input_channels, decoder_output_channels, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out=False):
+def UNetLike_DownStep5_3(input_shape, encoder_input_channels, decoder_output_channels, decoder_out_activation, encoder_norm_layer, decoder_norm_layer, upsample_mode, decoder_feature_out=False):  # * 无引用
   # 64, 32, 16, 8, 4
   encoder_block_list = [6, 12, 32, 32, 12]
   decoder_block_list = [3, 3, 3, 3, 3, 1]
@@ -308,6 +308,7 @@ class MultiView_UNetLike_DenseDimensionNet(nn.Module):
         view1_next_input = getattr(self.view1Model, 'decoder_layer' + str(i))(view1_next_input)
         view2_next_input = getattr(self.view2Model, 'decoder_layer' + str(i))(view2_next_input)
       else:
+        # print(view1_next_input.shape, getattr(self.view1Model, 'feature_linker' + str(i + 1)).shape)
         view1_next_input = getattr(self.view1Model, 'decoder_compress_layer' + str(i))(torch.cat((view1_next_input, getattr(self.view1Model, 'feature_linker' + str(i + 1))), dim=1))
         view2_next_input = getattr(self.view2Model, 'decoder_compress_layer' + str(i))(torch.cat((view2_next_input, getattr(self.view2Model, 'feature_linker' + str(i + 1))), dim=1))
         ########### MultiView Fusion

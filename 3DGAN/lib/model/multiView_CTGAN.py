@@ -15,6 +15,24 @@ import lib.model.nets.factory as factory
 from .loss.multi_gan_loss import GANLoss, RestructionLoss
 from lib.utils.image_pool import ImagePool
 import lib.utils.metrics as Metrics
+from monai.transforms import (
+    AsDiscrete,
+    LoadImage,
+    EnsureChannelFirstd,
+    Compose,
+    CropForegroundd,
+    LoadImaged,
+    Orientationd,
+    RandCropByPosNegLabeld,
+    ScaleIntensityRanged,
+    ScaleIntensityd,
+    NormalizeIntensityd,
+    Spacingd,
+    EnsureType,
+    Resized,
+    SaveImage,
+)
+import os
 
 
 class CTGAN(Base_Model):
@@ -195,6 +213,10 @@ class CTGAN(Base_Model):
     self.G_Map_fake_S = self.transition(self.output_map(self.ct_unGaussian(self.G_fake), 3))
 
   def metrics_evaluation(self):
+
+    # ? print("G_fake:",self.G_fake.shape)
+    # ? print("G_real:",self.G_real.shape)
+
     # 3D metrics including mse, cs and psnr
     g_fake_unNorm = self.ct_unGaussian(self.G_fake)
     g_real_unNorm = self.ct_unGaussian(self.G_real)
@@ -206,6 +228,26 @@ class CTGAN(Base_Model):
   def dimension_order_std(self, value, order):
     # standard CT dimension
     return value.permute(*tuple(np.argsort(order)))
+  
+  def save_nii(self):
+    G_fake_save = self.ct_unGaussian(self.G_fake).cpu()
+    # ? G_fake_save ~ [0,1]
+    G_fake_save = G_fake_save * 255
+    print("\nimage_shape={}".format(G_fake_save.shape))
+    saver_origin = SaveImage(
+            output_dir="./output_nii",
+            output_ext=".nii",
+            output_postfix="Generate",
+            separate_folder=False,
+            output_dtype=np.uint8,
+            # scale=255,
+            resample=False,
+            squeeze_end_dims=True,
+            writer="NibabelWriter",
+        )
+    image_filename = os.path.basename(self.image_paths[0][0])
+    saver_origin(G_fake_save, meta_data={"filename_or_obj": image_filename})
+
 
   def forward(self):
     '''
@@ -216,8 +258,13 @@ class CTGAN(Base_Model):
     self.G_fake_D1, self.G_fake_D2, self.G_fake_D = self.netG([self.G_input1, self.G_input2])
     # visual object should be [B D H W]
     self.G_fake = torch.squeeze(self.G_fake_D, 1)
+    # //print("G_fake:",self.G_fake.shape)
     # input of Discriminator is [B 1 D H W]
     self.G_real_D = torch.unsqueeze(self.G_real, 1)
+    # * to fit new dataset shape
+    # ! self.G_real_D = self.G_real
+    # // print("G_real:",self.G_real.shape)
+    # // print("G_real_D:",self.G_real_D.shape)
     # if add auxiliary loss to generator
     if self.auxiliary_loss and self.training:
       self.G_real_D1 = self.G_real_D.permute(*self.opt.CTOrder_Xray1).detach()
@@ -236,6 +283,8 @@ class CTGAN(Base_Model):
       self.projection_visual()
       # metrics
       self.metrics_evaluation()
+      # * save nii
+      self.save_nii()
     # multi-view projection maps for training
     # Note: self.G_real_D and self.G_fake_D are in dimension order of 'NCDHW'
     if self.training:

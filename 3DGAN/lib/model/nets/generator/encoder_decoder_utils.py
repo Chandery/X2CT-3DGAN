@@ -435,6 +435,6 @@ class Transposed_And_Add(nn.Module):
     self.permuteView1 = tuple(np.argsort(view1Order))
     self.permuteView2 = tuple(np.argsort(view2Order))
 
-  def forward(self, *input):
+  def forward(self, *input): # * 把输入的多个参数打包成元组
     # return tensor in order of sortOrder
     return (input[0].permute(*self.permuteView1) + input[1].permute(*self.permuteView2))

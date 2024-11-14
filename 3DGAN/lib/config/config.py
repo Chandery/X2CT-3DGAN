@@ -12,7 +12,7 @@ from easydict import EasyDict
 import os
 import numpy as np
 
-__C = EasyDict()
+__C = EasyDict() # * 集成了“.”调用方法的字典
 cfg = __C
 
 # Model Path
@@ -23,6 +23,10 @@ __C.XRAY2_MIN_MAX = [0, 1700]
 __C.CT_MEAN_STD = [0., 1.0]
 __C.XRAY1_MEAN_STD = [0., 1.0]
 __C.XRAY2_MEAN_STD = [0., 1.0]
+__C.cond_path = ""
+__C.data_path = ""
+__C.cond_resize_size = [128, 128, 128]
+__C.img_resize_size = [128, 128]
 
 '''
 Network
@@ -201,6 +205,8 @@ __C.CTGAN.CTOrder_Xray1 = [0, 1, 3, 2, 4]
 __C.CTGAN.CTOrder_Xray2 = [0, 1, 4, 2, 3]
 # identity loss'weight
 __C.CTGAN.idt_lambda = 1.0
+__C.CTGAN.idt_delay = False
+__C.CTGAN.idt_delay_epoch = 0
 __C.CTGAN.idt_reduction = 'elementwise_mean'
 __C.CTGAN.idt_weight = 0.
 __C.CTGAN.idt_weight_range = [0., 1.]
@@ -230,7 +236,7 @@ def cfg_from_yaml(filename):
   '''
   import yaml
   with open(filename, 'r') as f:
-    yaml_cfg = EasyDict(yaml.load(f))
+    yaml_cfg = EasyDict(yaml.load(f, Loader=yaml.SafeLoader))
   _merge_a_into_b(yaml_cfg, __C)
 
 def print_easy_dict(easy_dict):
@@ -239,6 +245,12 @@ def print_easy_dict(easy_dict):
   for k,v in easy_dict.__dict__.items():
     print('{}: {}'.format(k, v))
   print('==='*10)
+  with open(os.path.join(__C.MODEL_SAVE_PATH,'config.txt'), 'w') as f:
+    f.write('==='*10 + '\n')
+    f.write('====YAML Parameters\n')
+    for k, v in easy_dict.__dict__.items():
+        f.write('{}: {}\n'.format(k, v))
+    f.write('==='*10 + '\n')
 
 def merge_dict_and_yaml(in_dict, easy_dict):
   if type(easy_dict) is not EasyDict:

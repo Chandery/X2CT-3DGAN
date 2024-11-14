@@ -40,7 +40,7 @@ class CT_XRAY_Data_Augmentation(object):
     '''
     return self.augment(img_list)
 
-class CT_XRAY_Data_Test(object):
+class CT_XRAY_Data_Test(object): # *object是所有类的基类
   def __init__(self, opt=None):
     self.augment = List_Compose([
       (None, None),

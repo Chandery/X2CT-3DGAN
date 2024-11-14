@@ -16,6 +16,7 @@ import tqdm
 import torch
 import numpy as np
 import os
+from lib.dataset.monai_nii_dataset import prepare_dataset
 
 
 def parse_args():
@@ -76,23 +77,32 @@ def evaluate(args):
   if args.ymlpath is not None:
     cfg_from_yaml(args.ymlpath)
   # merge config with argparse
-  opt = copy.deepcopy(cfg)
-  opt = merge_dict_and_yaml(args.__dict__, opt)
+  opt = copy.deepcopy(cfg)  # * cfg是一个全局变量，对应config/config.py中的__C  ;  deepcopy是深拷贝，拷贝对象及其子对象，会生成一个新的对象
+  opt = merge_dict_and_yaml(args.__dict__, opt)  # 把args所有参数打包成dict，合并到opt中
   print_easy_dict(opt)
 
   opt.serial_batches = True
 
   # add data_augmentation
-  datasetClass, _, dataTestClass, collateClass = get_dataset(opt.dataset_class)
-  opt.data_augmentation = dataTestClass
 
-  # get dataset
-  dataset = datasetClass(opt)
-  print('DataSet is {}'.format(dataset.name))
+  # * 注意！！详见3DGAN/lib/dataset/collate_fn.py中，collate_gan函数的定义，这里的dataloader提供的batch形式是[imgs, boxes, labels]
+
+  datasetClass, _, dataTestClass, collateClass = get_dataset(opt.dataset_class)
+  opt.data_augmentation = dataTestClass  # * 对数据进行预处理和增强的整合类
+
+  # * get dataset
+  # // dataset = datasetClass(opt)
+  # // print('DataSet is {}'.format(dataset.name))
+  dataset, _shuffle = prepare_dataset(data_path=opt.data_path, 
+                            resize_size=opt.cond_resize_size, 
+                            img_resize_size=opt.img_resize_size, 
+                            cond_path=opt.cond_path, 
+                            split='test'
+  )
   dataloader = torch.utils.data.DataLoader(
     dataset,
     batch_size=1,
-    shuffle=False,
+    shuffle=_shuffle,
     num_workers=int(opt.nThreads),
     collate_fn=collateClass)
 
@@ -137,13 +147,15 @@ def evaluate(args):
     os.makedirs(result_dir)
 
   avg_dict = dict()
-  for epoch_i, data in tqdm.tqdm(enumerate(dataloader)):
+  for epoch_i, data in tqdm.tqdm(enumerate(dataloader), total=dataset_size):
 
     gan_model.set_input(data)
     gan_model.test()
 
     visuals = gan_model.get_current_visuals()
     img_path = gan_model.get_image_paths()
+
+    # print('\nprocess image... %s' % img_path[0][0])
 
     #
     # Evaluate Part
